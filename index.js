@@ -1,0 +1,32 @@
+const mongoose = require('mongoose');
+const { database, throwError} = require('./mongon');
+const config = require('@bootloader/config');
+
+const db_prefix = config.getIfPresent('mongodb.db.prefix');
+
+const getTenantDB = (domain, modelName, schema) => {
+    const dbName = `${db_prefix}${domain}`;
+    if (database) {
+      // useDb will return new connection
+      const db = database(dbName);
+      //console.info(`DB switched to ${dbName}`);
+      db.model(modelName, schema);
+      return db;
+    }
+    return throwError(500, codes.CODE_8004);
+};
+
+module.exports = {
+    getModel (domain, modelName, schema){
+        console.info(`getModelByTenant tenantId : ${domain}.`);
+        const tenantDb = getTenantDB(domain, modelName, schema);
+        return tenantDb.model(modelName);
+    },
+    model (schema, options){
+        let { domain , collection  } = options || {};
+        let collectionName = collection || schema.options.collection;
+        const tenantDb = getTenantDB(domain || 'sample', collectionName, schema);
+        return tenantDb.model(collectionName);
+    },
+    Schema : mongoose.Schema
+}
