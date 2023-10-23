@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { database, throwError} = require('./mongon');
+const { QueryBuilder, database, throwError} = require('./mongon');
 const config = require('@bootloader/config');
 
 const db_prefix = config.getIfPresent('mongodb.db.prefix');
@@ -28,5 +28,7 @@ module.exports = {
         const tenantDb = getTenantDB(domain || 'sample', collectionName, schema);
         return tenantDb.model(collectionName);
     },
-    Schema : mongoose.Schema
+    Schema : mongoose.Schema,
+    QueryBuilder : QueryBuilder,
+    throwError : throwError
 }
