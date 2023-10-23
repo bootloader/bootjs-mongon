@@ -14,12 +14,12 @@
   "license": "ISC",
   "dependencies": {
     "@bootloader/config": "^1.4.0",
-    "parse-mongo-url": "^1.1.1",
-    "mongoose": "^6.11.4"
+    "mongodb-memory-server": "^8.16.0",
+    "mongoose": "^6.11.4",
+    "parse-mongo-url": "^1.1.1"
   },
   "bugs": {
     "url": "https://github.com/bootloader/bootjs-mongon/issues"
   },
-  "homepage": "https://github.com/bootloader/bootjs-mongon#readme",
-  "devDependencies": {}
+  "homepage": "https://github.com/bootloader/bootjs-mongon#readme"
 }

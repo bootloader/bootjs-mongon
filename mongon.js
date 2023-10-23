@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const config = require('@bootloader/config');
-const parseMongoUrl = require('parse-mongo-url')
+const parseMongoUrl = require('parse-mongo-url');
+
+const { MongoMemoryServer } =  require('mongodb-memory-server');
+let MongoMemoryServerInstance = null;
 
 
 var mongoUrl = config.getIfPresent("mry.scriptus.mongourl","mongodb.url");
@@ -52,13 +55,20 @@ var dbState = [{
     label: "disconnecting"
 }];
 
+
 mongoose.connect(mongoUrl,
     mongoOptions,
 () => {
     const state = Number(mongoose.connection.readyState);
     console.log(dbState.find(f => f.value == state).label, "to db"); // connected to db
-
     const MongonSchema = require('./mongon_schema');
+
+    if('disconnected' == state){
+        console.log("StopMockingMonogo",!!MongoMemoryServerInstance);
+        if(MongoMemoryServerInstance){
+            MongoMemoryServerInstance.stop();
+        }
+    }
 });
 
 const mongoConfig = parseMongoUrl(mongoUrl); /***** ==> {
@@ -79,14 +89,25 @@ const MONGODB_URL = mongoUrl;//`${mongoConfig.servers[0].host}:${mongoConfig.ser
 if(mongoDebugQuery){
     mongoose.set('debug', mongoDebugQuery);
 }
-const connect = () => mongoose.createConnection(MONGODB_URL, mongoOptions);
+const connect = (url,options) => mongoose.createConnection(url, options);
 
-const connectToMongoDB = () => {
+const connectToMongoDB = async () => {
     if(mongoConfig.auth.user == '<username>'){
-        console.log("Mongo Configuration Missing")
-        return;
+        console.log("Mongo Configuration Missing");
+        const mongoServer = await MongoMemoryServer.create();
+        const db = connect(mongoServer.getUri());
+        db.on('open',()=>{
+            console.info(`MockDB connection open to ${mongoServer.getUri()}`);
+        })
+        db.on('error', (err) => {
+            console.info(`MockDB connection error: ${err} with connection info ${mongoServer.getUri()}`);
+            process.exit(0);
+        });
+        MongoMemoryServerInstance = mongoServer;
+        return db;
+        //return;
     } 
-    const db = connect(MONGODB_URL);
+    const db = connect(MONGODB_URL,mongoOptions);
     db.on('open', () => {
         console.info(`Mongoose connection open to ${JSON.stringify(mongoConfig.servers[0].host)}`);
     });
@@ -125,7 +146,10 @@ QueryBuilder.prototype.query =  function(k){
 }
 
 module.exports = function(){
-    let factory = connectToMongoDB();
+    let factory =  null;
+    (async () => {
+        factory = await connectToMongoDB();
+    })();
     return {
         QueryBuilder : QueryBuilder,
         database(dbName){

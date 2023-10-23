@@ -13,7 +13,7 @@ const getTenantDB = (domain, modelName, schema) => {
       db.model(modelName, schema);
       return db;
     }
-    return throwError(500, codes.CODE_8004);
+    return throwError(500, 'no database');
 };
 
 module.exports = {
