@@ -62,7 +62,7 @@ mongoose.connect(mongoUrl,
 });
 
 const mongoConfig = parseMongoUrl(mongoUrl); /***** ==> {
-    auth: { user: 'xxxxxx', password: 'xxxxxxx' },
+    auth: { user: '*******', password: '*****' },
     server_options: { socketOptions: {} },
     db_options: {
       read_preference_tags: null,

@@ -29,6 +29,5 @@ module.exports = {
         return tenantDb.model(collectionName);
     },
     Schema : mongoose.Schema,
-    QueryBuilder : QueryBuilder,
-    throwError : throwError
+    QueryBuilder,database,throwError
 }
