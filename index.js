@@ -3,6 +3,7 @@ const { QueryBuilder, database, throwError} = require('./mongon');
 const config = require('@bootloader/config');
 
 const db_prefix = config.getIfPresent('mongodb.db.prefix');
+const db_domain = config.getIfPresent('mongodb.db.domain');
 
 const getTenantDB = (domain, modelName, schema) => {
     const dbName = `${db_prefix}${domain}`;
@@ -25,7 +26,7 @@ module.exports = {
     model (schema, options){
         let { domain , collection  } = options || {};
         let collectionName = collection || schema.options.collection;
-        const tenantDb = getTenantDB(domain || 'sample', collectionName, schema);
+        const tenantDb = getTenantDB(domain || db_domain, collectionName, schema);
         return tenantDb.model(collectionName);
     },
     Schema : mongoose.Schema,
