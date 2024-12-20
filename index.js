@@ -37,7 +37,7 @@ module.exports = {
     collection (schema, options){
         let { domain , collection  } = options || {};
         let collectionName = collection || schema.options.collection;
-        const tenantDb = getTenantDB(domain || 'sample', collectionName, schema);
+        const tenantDb = getTenantDB(domain || db_domain, collectionName, schema);
         return tenantDb.collection(collectionName);
     },
     Schema : mongoose.Schema,
