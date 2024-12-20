@@ -18,6 +18,11 @@ const getTenantDB = (domain, modelName, schema) => {
 };
 
 module.exports = {
+    getCollection (domain, collectionName, schema){
+        console.info(`getCollectionByTenant tenantId : ${domain}.`);
+        const tenantDb = getTenantDB(domain, collectionName, schema);
+        return tenantDb.collection(collectionName);
+    },
     getModel (domain, modelName, schema){
         console.info(`getModelByTenant tenantId : ${domain}.`);
         const tenantDb = getTenantDB(domain, modelName, schema);
@@ -28,6 +33,12 @@ module.exports = {
         let collectionName = collection || schema.options.collection;
         const tenantDb = getTenantDB(domain || db_domain, collectionName, schema);
         return tenantDb.model(collectionName);
+    },
+    collection (schema, options){
+        let { domain , collection  } = options || {};
+        let collectionName = collection || schema.options.collection;
+        const tenantDb = getTenantDB(domain || 'sample', collectionName, schema);
+        return tenantDb.collection(collectionName);
     },
     Schema : mongoose.Schema,
     QueryBuilder,database,throwError
