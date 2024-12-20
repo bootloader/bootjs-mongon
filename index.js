@@ -10,8 +10,13 @@ const getTenantDB = (domain, modelName, schema) => {
     if (database) {
       // useDb will return new connection
       const db = database(dbName);
-      //console.info(`DB switched to ${dbName}`);
-      db.model(modelName, schema);
+      console.info(`DB switched to ${dbName}`);
+      if(modelName && schema){
+        if (!db.models[modelName]) { // Check if model already exists
+            console.info(`DB modelName : ${modelName}`);
+            db.model(modelName, schema);
+        }
+      }
       return db;
     }
     return throwError(500, 'no database');

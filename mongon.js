@@ -149,6 +149,7 @@ module.exports = function(){
     let factory =  null;
     (async () => {
         factory = await connectToMongoDB();
+        console.log("connectToMongoDB:Success")
     })();
     return {
         QueryBuilder : QueryBuilder,
