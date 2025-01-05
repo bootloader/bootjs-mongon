@@ -5,16 +5,18 @@ const config = require('@bootloader/config');
 const db_prefix = config.getIfPresent('mongodb.db.prefix');
 const db_domain = config.getIfPresent('mongodb.db.domain');
 
-const getTenantDB = (domain, modelName, schema) => {
-    const dbName = `${db_prefix}${domain}`;
+const getTenantDB = ({ dbDomain, domain, dbPrefix,dbName, collectionName, schema}) => {
+    dbPrefix = dbPrefix || db_prefix;
+    dbDomain = dbDomain || domain || db_domain;
+    dbName = dbName || (`${dbPrefix}${domain}`)
     if (database) {
       // useDb will return new connection
       const db = database(dbName);
       console.info(`DB switched to ${dbName}`);
-      if(modelName && schema){
-        if (!db.models[modelName]) { // Check if model already exists
-            console.info(`DB modelName : ${modelName}`);
-            db.model(modelName, schema);
+      if(collectionName && schema){
+        if (!db.models[collectionName]) { // Check if model already exists
+            console.info(`DB collectionName : ${collectionName}`);
+            db.model(collectionName, schema);
         }
       }
       return db;
@@ -23,26 +25,38 @@ const getTenantDB = (domain, modelName, schema) => {
 };
 
 module.exports = {
-    getCollection (domain, collectionName, schema){
+    getCollection (domain, collectionName, schema, options={}){
         console.info(`getCollectionByTenant tenantId : ${domain}.`);
-        const tenantDb = getTenantDB(domain, collectionName, schema);
+        const tenantDb = getTenantDB({
+            domain, collectionName, schema,
+            ...options
+        });
         return tenantDb.collection(collectionName);
     },
-    getModel (domain, modelName, schema){
+    getModel (domain, collectionName, schema, options = {}){
         console.info(`getModelByTenant tenantId : ${domain}.`);
-        const tenantDb = getTenantDB(domain, modelName, schema);
-        return tenantDb.model(modelName);
-    },
-    model (schema, options){
-        let { domain , collection  } = options || {};
-        let collectionName = collection || schema.options.collection;
-        const tenantDb = getTenantDB(domain || db_domain, collectionName, schema);
+        const tenantDb = getTenantDB({
+            domain, collectionName, schema,
+            ...options
+        });
         return tenantDb.model(collectionName);
     },
-    collection (schema, options){
+    model (schema, options={}){
+        let { domain , collection } = options || {};
+        let collectionName = collection || schema.options.collection;
+        const tenantDb = getTenantDB({
+                dbDomain:domain, collectionName, schema,
+                ...options
+        });
+        return tenantDb.model(collectionName);
+    },
+    collection (schema, options={}){
         let { domain , collection  } = options || {};
         let collectionName = collection || schema.options.collection;
-        const tenantDb = getTenantDB(domain || db_domain, collectionName, schema);
+        const tenantDb = getTenantDB({
+            domain, collectionName, schema,
+            ...options
+        });
         return tenantDb.collection(collectionName);
     },
     Schema : mongoose.Schema,
