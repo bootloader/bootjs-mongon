@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const { QueryBuilder, database, throwError} = require('./mongon');
 const config = require('@bootloader/config');
+const log4js = require("@bootloader/log4js");
+var logger = log4js.getLogger('mongon');
 
 const db_prefix = config.getIfPresent('mongodb.db.prefix');
 const db_domain = config.getIfPresent('mongodb.db.domain');

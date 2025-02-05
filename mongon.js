@@ -1,13 +1,20 @@
 const mongoose = require('mongoose');
 const config = require('@bootloader/config');
 const parseMongoUrl = require('parse-mongo-url');
+const log4js = require("@bootloader/log4js");
+var logger = log4js.getLogger('mongon');
 
 const { MongoMemoryServer } =  require('mongodb-memory-server');
 let MongoMemoryServerInstance = null;
 
 
-var mongoUrl = config.getIfPresent("mry.scriptus.mongourl","mongodb.url");
+var mongoUrl = config.getIfPresent("mongodb.url","mry.scriptus.mongourl");
 var mongoDebugQuery = !!config.getIfPresent("mry.scriptus.mongo.debug","mongodb.debug");
+
+if(mongoDebugQuery){
+    logger.level = "debug";
+}
+
 
 // mongo url sample : mongodb+srv://USER:PASS@uat-xxxx.mongodb.net/test?retryWrites=true&w=majority
 mongoUrl = (function(mongoUrl){
@@ -17,9 +24,10 @@ mongoUrl = (function(mongoUrl){
    c[2] = at.join("@");
    return c.join(":");
 })(mongoUrl);
-console.log("mongoUrl=====> ",mongoUrl);
+
+logger.debug("mongoUrl=====> ",mongoUrl);
 const MONGODB_SECURED = config.get("mongodb.secured.enabled");
-console.log("MONGODB_SECURED=====> ",MONGODB_SECURED);
+logger.debug("MONGODB_SECURED=====> ",MONGODB_SECURED);
 const mongoOptions = {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -60,11 +68,11 @@ mongoose.connect(mongoUrl,
     mongoOptions,
 () => {
     const state = Number(mongoose.connection.readyState);
-    console.log(dbState.find(f => f.value == state).label, "to db"); // connected to db
+    logger.debug(dbState.find(f => f.value == state).label, "to db"); // connected to db
     const MongonSchema = require('./mongon_schema');
 
     if('disconnected' == state){
-        console.log("StopMockingMonogo",!!MongoMemoryServerInstance);
+        logger.info("StopMockingMonogo",!!MongoMemoryServerInstance);
         if(MongoMemoryServerInstance){
             MongoMemoryServerInstance.stop();
         }
@@ -93,14 +101,14 @@ const connect = (url,options) => mongoose.createConnection(url, options);
 
 const connectToMongoDB = async () => {
     if(mongoConfig.auth.user == '<username>'){
-        console.log("Mongo Configuration Missing");
+        logger.warn("Mongo Configuration Missing");
         const mongoServer = await MongoMemoryServer.create();
         const db = connect(mongoServer.getUri());
         db.on('open',()=>{
-            console.info(`MockDB connection open to ${mongoServer.getUri()}`);
+            logger.info(`MockDB connection open to ${mongoServer.getUri()}`);
         })
         db.on('error', (err) => {
-            console.info(`MockDB connection error: ${err} with connection info ${mongoServer.getUri()}`);
+            logger.info(`MockDB connection error: ${err} with connection info ${mongoServer.getUri()}`);
             process.exit(0);
         });
         MongoMemoryServerInstance = mongoServer;
@@ -109,11 +117,11 @@ const connectToMongoDB = async () => {
     } 
     const db = connect(MONGODB_URL,mongoOptions);
     db.on('open', () => {
-        console.info(`Mongoose connection open to ${JSON.stringify(mongoConfig.servers[0].host)}`);
+        logger.info(`Mongoose connection open to ${JSON.stringify(mongoConfig.servers[0].host)}`);
     });
     db.on('error', (err) => {
-      console.info(`Mongoose connection error: ${err} with connection info ${JSON.stringify(mongoConfig.servers[0].host)}`);
-      process.exit(0);
+        logger.error(`Mongoose connection error: ${err} with connection info ${JSON.stringify(mongoConfig.servers[0].host)}`);
+        process.exit(0);
     });
     return db;
 };
@@ -149,7 +157,7 @@ module.exports = function(){
     let factory =  null;
     (async () => {
         factory = await connectToMongoDB();
-        console.log("connectToMongoDB:Success")
+        logger.info("connectToMongoDB:Success")
     })();
     return {
         QueryBuilder : QueryBuilder,

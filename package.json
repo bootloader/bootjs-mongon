@@ -14,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "@bootloader/config": "^1.4.1",
+    "@bootloader/log4js": "^1.0.0",
     "mongodb-memory-server": "^8.16.0",
     "mongoose": "^6.11.4",
     "parse-mongo-url": "^1.1.1"
