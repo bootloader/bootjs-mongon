@@ -7,7 +7,7 @@ module.exports = {
         let MongonModel = mongon.model(MongonSchema);
         let MongonDoc = new MongonModel({});
         return MongonDoc.save().then((result)=>{
-            return MongonModel.find().exec().then((docs)=>{
+            return MongonModel.findById(result._id).exec().then((docs)=>{
                 return docs;
             });
         });
