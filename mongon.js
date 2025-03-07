@@ -26,7 +26,7 @@ mongoUrl = (function(mongoUrl){
 })(mongoUrl);
 
 logger.debug("mongoUrl=====> ",mongoUrl);
-const MONGODB_SECURED = config.get("mongodb.secured.enabled");
+const MONGODB_SECURED = config.getIfPresent("mongodb.secured.enabled") || false;
 logger.debug("MONGODB_SECURED=====> ",MONGODB_SECURED);
 const mongoOptions = {
     useNewUrlParser: true,
@@ -100,7 +100,7 @@ if(mongoDebugQuery){
 const connect = (url,options) => mongoose.createConnection(url, options);
 
 const connectToMongoDB = async () => {
-    if(mongoConfig.auth.user == '<username>'){
+    if(mongoConfig.auth.user == '<username>' || !mongoUrl){
         logger.warn("Mongo Configuration Missing");
         const mongoServer = await MongoMemoryServer.create();
         const db = connect(mongoServer.getUri());
