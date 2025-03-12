@@ -14,10 +14,10 @@ const getTenantDB = ({ dbDomain, domain, dbPrefix,dbName, collectionName, schema
     if (database) {
       // useDb will return new connection
       const db = database(dbName);
-      console.info(`DB switched to ${dbName}`);
+      logger.debug(`DB switched tos ${dbName}`);
       if(collectionName && schema){
         if (!db.models[collectionName]) { // Check if model already exists
-            console.info(`DB collectionName : ${collectionName}`);
+            logger.debug(`DB collectionName : ${collectionName}`);
             db.model(collectionName, schema);
         }
       }
@@ -28,7 +28,7 @@ const getTenantDB = ({ dbDomain, domain, dbPrefix,dbName, collectionName, schema
 
 module.exports = {
     getCollection (domain, collectionName, schema, options={}){
-        console.info(`getCollectionByTenant tenantId : ${domain}.`);
+        logger.debug(`getCollectionByTenant tenantId : ${domain}.`);
         const tenantDb = getTenantDB({
             domain, collectionName, schema,
             ...options
@@ -36,7 +36,7 @@ module.exports = {
         return tenantDb.collection(collectionName);
     },
     getModel (domain, collectionName, schema, options = {}){
-        console.info(`getModelByTenant tenantId : ${domain}.`);
+        logger.debug(`getModelByTenant tenantId : ${domain}.`);
         const tenantDb = getTenantDB({
             domain, collectionName, schema,
             ...options
