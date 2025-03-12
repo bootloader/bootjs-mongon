@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { QueryBuilder, database, throwError} = require('./mongon');
 const config = require('@bootloader/config');
 const log4js = require("@bootloader/log4js");
-var logger = log4js.getLogger('mongon');
+var console = log4js.getLogger('mongon');
 
 const db_prefix = config.getIfPresent('mongodb.db.prefix');
 const db_domain = config.getIfPresent('mongodb.db.domain');
@@ -14,10 +14,10 @@ const getTenantDB = ({ dbDomain, domain, dbPrefix,dbName, collectionName, schema
     if (database) {
       // useDb will return new connection
       const db = database(dbName);
-      logger.debug(`DB switched tos ${dbName}`);
+      console.debug(`DB switched tos ${dbName}`);
       if(collectionName && schema){
         if (!db.models[collectionName]) { // Check if model already exists
-            logger.debug(`DB collectionName : ${collectionName}`);
+            console.debug(`DB collectionName : ${collectionName}`);
             db.model(collectionName, schema);
         }
       }
@@ -28,7 +28,7 @@ const getTenantDB = ({ dbDomain, domain, dbPrefix,dbName, collectionName, schema
 
 module.exports = {
     getCollection (domain, collectionName, schema, options={}){
-        logger.debug(`getCollectionByTenant tenantId : ${domain}.`);
+        console.debug(`getCollectionByTenant tenantId : ${domain}.`);
         const tenantDb = getTenantDB({
             domain, collectionName, schema,
             ...options
@@ -36,7 +36,7 @@ module.exports = {
         return tenantDb.collection(collectionName);
     },
     getModel (domain, collectionName, schema, options = {}){
-        logger.debug(`getModelByTenant tenantId : ${domain}.`);
+        console.debug(`getModelByTenant tenantId : ${domain}.`);
         const tenantDb = getTenantDB({
             domain, collectionName, schema,
             ...options
