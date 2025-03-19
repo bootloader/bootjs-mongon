@@ -100,7 +100,7 @@ if(mongoDebugQuery){
 const connect = (url,options) => mongoose.createConnection(url, options);
 
 const connectToMongoDB = async () => {
-    if(mongoConfig.auth.user == '<username>' || !mongoUrl){
+    if(mongoConfig.auth?.user == '<username>' || !mongoUrl){
         logger.warn("Mongo Configuration Missing");
         const mongoServer = await MongoMemoryServer.create();
         const db = connect(mongoServer.getUri());
