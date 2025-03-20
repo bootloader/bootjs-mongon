@@ -3,18 +3,19 @@ const { QueryBuilder, database, throwError} = require('./mongon');
 const config = require('@bootloader/config');
 const log4js = require("@bootloader/log4js");
 var console = log4js.getLogger('mongon');
+const {context} = require('@bootloader/utils');
 
 const db_prefix = config.getIfPresent('mongodb.db.prefix');
 const db_domain = config.getIfPresent('mongodb.db.domain');
 
-const getTenantDB = ({ dbDomain, domain, dbPrefix,dbName, collectionName, schema}) => {
+const getTenantDB = ({ dbDomain, domain, dbPrefix,dbName, db, collectionName, schema}) => {
     dbPrefix = dbPrefix || db_prefix;
-    dbDomain = dbDomain || domain || db_domain;
-    dbName = dbName || (`${dbPrefix}${domain}`)
+    dbDomain = dbDomain || domain || context.getTenant() || db_domain;
+    dbName = db || dbName || (`${dbPrefix}${dbDomain}`)
     if (database) {
       // useDb will return new connection
       const db = database(dbName);
-      console.debug(`DB switched tos ${dbName}`);
+      console.debug(`DB switched to ${dbName} for ${context.getTenant()}`);
       if(collectionName && schema){
         if (!db.models[collectionName]) { // Check if model already exists
             console.debug(`DB collectionName : ${collectionName}`);
