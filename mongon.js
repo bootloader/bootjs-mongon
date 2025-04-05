@@ -93,6 +93,7 @@ const mongoConfig = parseMongoUrl(mongoUrl); /***** ==> {
     dbName: 'meherybot',
     servers: [ { host: 'mongo.mongodb.io', port: 27017 } ]
   } ******/
+//console.log("mongoConfig",mongoConfig)
 const MONGODB_URL = mongoUrl;//`${mongoConfig.servers[0].host}:${mongoConfig.servers[0].port}`;
 if(mongoDebugQuery){
     mongoose.set('debug', mongoDebugQuery);
@@ -160,6 +161,9 @@ module.exports = function(){
         logger.info("connectToMongoDB:Success")
     })();
     return {
+        dbConfig : {
+            dbName : mongoConfig.dbName
+        },
         QueryBuilder : QueryBuilder,
         database(dbName){
             if(!factory){
