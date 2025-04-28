@@ -1,6 +1,6 @@
 {
   "name": "@bootloader/mongon",
-  "version": "1.1.13",
+  "version": "1.1.14",
   "description": "Multi-Tenant Support of mongoose",
   "main": "index.js",
   "scripts": {
