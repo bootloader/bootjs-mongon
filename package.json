@@ -1,6 +1,6 @@
 {
   "name": "@bootloader/mongon",
-  "version": "1.1.17",
+  "version": "1.1.18",
   "description": "Multi-Tenant Support of mongoose",
   "main": "index.js",
   "scripts": {
@@ -13,7 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@bootloader/utils": "^1.0.14",
+    "@bootloader/utils": "^1.0.17",
     "@bootloader/config": "^1.4.2",
     "@bootloader/log4js": "^1.0.5",
     "mongodb-memory-server": "^8.16.0",
@@ -21,7 +21,7 @@
     "parse-mongo-url": "^1.1.1"
   },
   "peerDependencies": {
-    "@bootloader/context": "^0.0.5"
+    "@bootloader/context": "^1.0.17"
   },
   "bugs": {
     "url": "https://github.com/bootloader/bootjs-mongon/issues"
