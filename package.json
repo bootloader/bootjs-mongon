@@ -1,6 +1,6 @@
 {
   "name": "@bootloader/mongon",
-  "version": "1.1.14",
+  "version": "1.1.15",
   "description": "Multi-Tenant Support of mongoose",
   "main": "index.js",
   "scripts": {
@@ -13,9 +13,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@bootloader/utils": "^1.0.11",
+    "@bootloader/utils": "^1.0.13",
     "@bootloader/config": "^1.4.2",
-    "@bootloader/log4js": "^1.0.4",
+    "@bootloader/log4js": "^1.0.5",
     "mongodb-memory-server": "^8.16.0",
     "mongoose": "^6.11.4",
     "parse-mongo-url": "^1.1.1"
