@@ -9,11 +9,18 @@ const db_prefix = config.getIfPresent('mongodb.db.prefix') || "";
 const db_domain = config.getIfPresent('mongodb.db.domain') || dbConfig.dbName || "";
 
 const getTenantDB = ({ dbDomain, domain, dbPrefix,dbName, db, collectionName, schema}) => {
+    console.debug(`DB:getTenantDB({
+        dbDomain:${dbDomain}, domain:${domain}, dbPrefix:${dbPrefix}, dbName:${dbName},
+        collectionName:${collectionName}, schema:${schema}
+    })`);
     dbPrefix = dbPrefix || db_prefix || "";
     let tnt = context.getTenant();
     tnt = ("~~~" == tnt) ? "" : tnt
     dbDomain = dbDomain || domain || tnt || db_domain || context.getTenant() || "";
     dbName = db || dbName || (`${dbPrefix}${dbDomain}`)
+    console.debug(`DB:getTenantDB({
+        dbDomain:${dbDomain}, domain:${domain}, dbPrefix:${dbPrefix}, dbName:${dbName},tnt:${tnt}
+    })`);
     if (database) {
       // useDb will return new connection
       const db = database(dbName);
