@@ -1,6 +1,6 @@
 {
   "name": "@bootloader/mongon",
-  "version": "1.1.16",
+  "version": "1.1.17",
   "description": "Multi-Tenant Support of mongoose",
   "main": "index.js",
   "scripts": {
@@ -21,7 +21,7 @@
     "parse-mongo-url": "^1.1.1"
   },
   "peerDependencies": {
-    "@bootloader/context": "^0.0.2"
+    "@bootloader/context": "^0.0.5"
   },
   "bugs": {
     "url": "https://github.com/bootloader/bootjs-mongon/issues"
