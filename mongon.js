@@ -19,6 +19,10 @@ if (mongoDebugQuery) {
 
 // mongo url sample : mongodb+srv://USER:PASS@uat-xxxx.mongodb.net/test?retryWrites=true&w=majority
 mongoUrl = (function (mongoUrl) {
+  if (!mongoUrl.includes("@")) {
+    // No username/password → DO NOTHING
+    return mongoUrl;
+  }
   let c = mongoUrl.split(":");
   if (c.length > 2) {
     // Make sure there's a part containing user:password@host
