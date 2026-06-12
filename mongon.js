@@ -1,167 +1,179 @@
 const mongoose = require("mongoose");
 const config = require("@bootloader/config");
-const parseMongoUrl = require("parse-mongo-url");
 const log4js = require("@bootloader/log4js");
-var logger = log4js.getLogger("mongon");
-
 const { MongoMemoryServer } = require("mongodb-memory-server");
+
+const logger = log4js.getLogger("mongon");
 let MongoMemoryServerInstance = null;
 
-var mongoUrl = config.getIfPresent("mongodb.url", "mry.scriptus.mongourl");
-var mongoDebugQuery = !!config.getIfPresent(
-  "mry.scriptus.mongo.debug",
-  "mongodb.debug"
+/* Helper functions start */
+
+function configBoolean(value) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+  }
+
+  return value === 1;
+}
+
+function encodeCredential(value) {
+  try {
+    return encodeURIComponent(decodeURIComponent(value));
+  } catch (error) {
+    return encodeURIComponent(value);
+  }
+}
+
+function normalizeMongoUrl(value) {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  const mongoUrl = value.trim();
+  const match = mongoUrl.match(/^(mongodb(?:\+srv)?:\/\/)([^/?#]*)(.*)$/i);
+  if (!match) {
+    return mongoUrl;
+  }
+
+  const authority = match[2];
+  const atIndex = authority.lastIndexOf("@");
+  if (atIndex === -1) {
+    return mongoUrl;
+  }
+
+  const credentials = authority.substring(0, atIndex);
+  const hosts = authority.substring(atIndex + 1);
+  const separatorIndex = credentials.indexOf(":");
+  const username =
+    separatorIndex === -1
+      ? credentials
+      : credentials.substring(0, separatorIndex);
+  const password =
+    separatorIndex === -1 ? null : credentials.substring(separatorIndex + 1);
+  const encodedCredentials =
+    password === null
+      ? encodeCredential(username)
+      : `${encodeCredential(username)}:${encodeCredential(password)}`;
+
+  return `${match[1]}${encodedCredentials}@${hosts}${match[3]}`;
+}
+
+function decodeCredential(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch (error) {
+    return value;
+  }
+}
+
+function inspectMongoUrl(mongoUrl) {
+  if (!mongoUrl) {
+    return { auth: null, dbName: "admin", host: null };
+  }
+
+  const match = mongoUrl.match(
+    /^mongodb(?:\+srv)?:\/\/([^/?#]*)(?:\/([^?#]*))?/i,
+  );
+  if (!match) {
+    return { auth: null, dbName: "admin", host: null };
+  }
+
+  const authority = match[1];
+  const atIndex = authority.lastIndexOf("@");
+  const credentials = atIndex === -1 ? null : authority.substring(0, atIndex);
+  const hosts = atIndex === -1 ? authority : authority.substring(atIndex + 1);
+  const separatorIndex = credentials ? credentials.indexOf(":") : -1;
+  const auth = credentials
+    ? {
+        user: decodeCredential(
+          separatorIndex === -1
+            ? credentials
+            : credentials.substring(0, separatorIndex),
+        ),
+      }
+    : null;
+
+  if (auth && separatorIndex !== -1) {
+    auth.password = decodeCredential(credentials.substring(separatorIndex + 1));
+  }
+
+  return {
+    auth,
+    dbName: decodeCredential(match[2] || "admin"),
+    host: hosts.split(",")[0] || null,
+  };
+}
+
+/* Helper functions end */
+
+const mongoUrl = normalizeMongoUrl(
+  config.getIfPresent("mongodb.url", "mry.scriptus.mongourl"),
+);
+const mongoConfig = inspectMongoUrl(mongoUrl);
+const mongoDebugQuery = configBoolean(
+  config.getIfPresent("mry.scriptus.mongo.debug", "mongodb.debug"),
+);
+const mongodbSecured = configBoolean(
+  config.getIfPresent("mongodb.secured.enabled"),
 );
 
 if (mongoDebugQuery) {
   logger.level = "debug";
+  mongoose.set("debug", true);
 }
 
-// mongo url sample : mongodb+srv://USER:PASS@uat-xxxx.mongodb.net/test?retryWrites=true&w=majority
-mongoUrl = (function (mongoUrl) {
-  if (!mongoUrl.includes("@")) {
-    // No username/password → DO NOTHING
-    return mongoUrl;
-  }
-  let c = mongoUrl.split(":");
-  if (c.length > 2) {
-    // Make sure there's a part containing user:password@host
-    let userPassHost = c[2];
-    const lastAtIndex = userPassHost.lastIndexOf("@");
+logger.debug("MongoDB configuration", {
+  host: mongoConfig.host,
+  dbName: mongoConfig.dbName,
+  secured: mongodbSecured,
+});
 
-    if (lastAtIndex !== -1) {
-      // Split only at the last "@"
-      const password = userPassHost.substring(0, lastAtIndex);
-      const host = userPassHost.substring(lastAtIndex + 1);
-      const encodedPassword = encodeURIComponent(password);
-      c[2] = encodedPassword + "@" + host;
-    } else {
-      // no @ in c[2]
-      c[2] = encodeURIComponent(c[2]);
-    }
-  }
-  return c.join(":");
-})(mongoUrl);
-
-// mongoUrl = (function(mongoUrl){
-//    let c = mongoUrl.split(":");
-//    let at = c[2].split("@");
-//    at[0] = encodeURIComponent(at[0]);
-//    c[2] = at.join("@");
-//    return c.join(":");
-// })(mongoUrl);
-
-logger.debug("mongoUrl=====> ", mongoUrl);
-const MONGODB_SECURED = config.getIfPresent("mongodb.secured.enabled") || false;
-logger.debug("MONGODB_SECURED=====> ", MONGODB_SECURED);
 const mongoOptions = {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  ...(MONGODB_SECURED
+  ...(mongodbSecured
     ? {
         ssl: true,
         sslValidate: true,
         sslCA: config.get("mongodb.secured.sslCA"),
       }
     : {}),
-  //useCreateIndex: true,
-  //useFindAndModify: false,
-  //autoIndex: true,
-  //poolSize: 10,
-  //bufferMaxEntries: 0,
-  //connectTimeoutMS: 10000,
-  //socketTimeoutMS: 30000,
 };
 
-var dbState = [
-  {
-    value: 0,
-    label: "disconnected",
-  },
-  {
-    value: 1,
-    label: "connected",
-  },
-  {
-    value: 2,
-    label: "connecting",
-  },
-  {
-    value: 3,
-    label: "disconnecting",
-  },
-];
-
-mongoose.connect(mongoUrl, mongoOptions, () => {
-  const state = Number(mongoose.connection.readyState);
-  logger.debug(dbState.find((f) => f.value == state).label, "to db"); // connected to db
-  const MongonSchema = require("./mongon_schema");
-
-  if ("disconnected" == state) {
-    logger.info("StopMockingMonogo", !!MongoMemoryServerInstance);
-    if (MongoMemoryServerInstance) {
-      MongoMemoryServerInstance.stop();
-    }
-  }
-});
-
-const mongoConfig = parseMongoUrl(mongoUrl); /***** ==> {
-    auth: { user: '*******', password: '*****' },
-    server_options: { socketOptions: {} },
-    db_options: {
-      read_preference_tags: null,
-      authSource: 'admin',
-      authMechanism: 'SCRAM-SHA-1',
-      read_preference: 'primary'
-    },
-    rs_options: { socketOptions: {} },
-    mongos_options: {},
-    dbName: 'meherybot',
-    servers: [ { host: 'mongo.mongodb.io', port: 27017 } ]
-  } ******/
-//console.log("mongoConfig",mongoConfig)
-const MONGODB_URL = mongoUrl; //`${mongoConfig.servers[0].host}:${mongoConfig.servers[0].port}`;
-if (mongoDebugQuery) {
-  mongoose.set("debug", mongoDebugQuery);
-}
-const connect = (url, options) => mongoose.createConnection(url, options);
-
-const connectToMongoDB = async () => {
-  if (mongoConfig.auth?.user == "<username>" || !mongoUrl) {
-    logger.warn("Mongo Configuration Missing");
-    const mongoServer = await MongoMemoryServer.create();
-    const db = connect(mongoServer.getUri());
-    db.on("open", () => {
-      logger.info(`MockDB connection open to ${mongoServer.getUri()}`);
-    });
-    db.on("error", (err) => {
-      logger.info(
-        `MockDB connection error: ${err} with connection info ${mongoServer.getUri()}`
-      );
-      process.exit(0);
-    });
-    MongoMemoryServerInstance = mongoServer;
-    return db;
-    //return;
-  }
-  const db = connect(MONGODB_URL, mongoOptions);
+function addConnectionLogging(db, description) {
   db.on("open", () => {
-    logger.info(
-      `Mongoose connection open to ${JSON.stringify(
-        mongoConfig.servers[0].host
-      )}`
-    );
+    logger.info(`${description} connection open`);
   });
-  db.on("error", (err) => {
-    logger.error(
-      `Mongoose connection error: ${err} with connection info ${JSON.stringify(
-        mongoConfig.servers[0].host
-      )}`
-    );
-    process.exit(0);
+  db.on("error", (error) => {
+    logger.info(`${description} connection error`, error);
   });
   return db;
-};
+}
+
+function connectToMongoDB() {
+  if (mongoConfig.auth?.user === "<username>" || !mongoUrl) {
+    logger.info("Mongo Configuration Missing");
+    const db = addConnectionLogging(mongoose.createConnection(), "MockDB");
+    MongoMemoryServer.create()
+      .then((mongoServer) => {
+        MongoMemoryServerInstance = mongoServer;
+        return db.openUri(mongoServer.getUri());
+      })
+      .catch((error) => {
+        logger.info("MockDB startup failed", error);
+      });
+    return db;
+  }
+
+  return addConnectionLogging(
+    mongoose.createConnection(mongoUrl, mongoOptions),
+    `Mongoose (${mongoConfig.host || "configured host"})`,
+  );
+}
 
 function QueryBuilder() {
   this.q = {};
@@ -185,17 +197,19 @@ QueryBuilder.prototype.where = function (options, values) {
   }
   return this;
 };
-
-QueryBuilder.prototype.query = function (k) {
+QueryBuilder.prototype.query = function () {
   return this.q;
 };
 
 module.exports = (function () {
   let factory = null;
-  (async () => {
-    factory = await connectToMongoDB();
-    logger.info("connectToMongoDB:Success");
-  })();
+
+  try {
+    factory = connectToMongoDB();
+  } catch (error) {
+    logger.info("connectToMongoDB:Failed", error);
+  }
+
   return {
     dbConfig: {
       dbName: mongoConfig.dbName,
