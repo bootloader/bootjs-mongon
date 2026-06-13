@@ -2,6 +2,11 @@ const parseMongoUrl = require("parse-mongo-url");
 const config = require("@bootloader/config");
 
 const MONGODB_SECURED = config.getIfPresent("mongodb.secured.enabled") || false;
+const MONGODB_TIMEOUT_SERVERSELECTION = config.get(
+  "mongodb.timeout.serverSelection",
+);
+const MONGODB_TIMEOUT_CONNECT = config.get("mongodb.timeout.connect");
+const MONGODB_TIMEOUT_SOCKET = config.get("mongodb.timeout.socket");
 
 var dbState = [
   {
@@ -69,12 +74,25 @@ module.exports = {
     let mongoOptions = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000, // ← Add this
+      connectTimeoutMS: 10000, // ← Add this
+      socketTimeoutMS: 45000, // ← Add this
+      retryWrites: false, // Already in URL but good to set
       ...(MONGODB_SECURED
         ? {
             ssl: true,
             sslValidate: true,
             sslCA: config.get("mongodb.secured.sslCA"),
           }
+        : {}),
+      ...(MONGODB_TIMEOUT_SERVERSELECTION
+        ? { serverSelectionTimeoutMS: MONGODB_TIMEOUT_SERVERSELECTION }
+        : {}),
+      ...(MONGODB_TIMEOUT_CONNECT
+        ? { connectTimeoutMS: MONGODB_TIMEOUT_CONNECT }
+        : {}),
+      ...(MONGODB_TIMEOUT_SOCKET
+        ? { socketTimeoutMS: MONGODB_TIMEOUT_SOCKET }
         : {}),
       //useCreateIndex: true,
       //useFindAndModify: false,
@@ -90,6 +108,5 @@ module.exports = {
 
   connection_state: function (state) {
     return dbState.find((f) => f.value == state).label;
-  }
-
+  },
 };
