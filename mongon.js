@@ -8,6 +8,7 @@ const { MongoMemoryServer } = require("mongodb-memory-server");
 let MongoMemoryServerInstance = null;
 
 var mongoUrl = config.getIfPresent("mongodb.url", "mry.scriptus.mongourl");
+var mongoRoUrl = config.getIfPresent("mongodb-ro.url");
 var MONGO_GLOBAL = config.getIfPresent("mongodb.global");
 
 var mongoDebugQuery = !!config.getIfPresent(
@@ -20,8 +21,12 @@ if (mongoDebugQuery) {
 }
 // mongo url sample : mongodb+srv://USER:PASS@uat-xxxx.mongodb.net/test?retryWrites=true&w=majority
 mongoUrl = mongoUtils.clean_url(mongoUrl);
+if (mongoRoUrl) {
+  mongoRoUrl = mongoUtils.clean_url(mongoRoUrl);
+}
 
 logger.debug("MONGODB_URL=====> ", mongoUrl);
+logger.debug("MONGODB_RO_URL=====> ", mongoRoUrl || "(fallback to primary)");
 const mongoOptions = mongoUtils.mongo_options();
 console.log("mongoOptions", mongoOptions);
 
@@ -48,8 +53,11 @@ if (mongoDebugQuery) {
 }
 const connect = (url, options) => mongoose.createConnection(url, options);
 
-const connectToMongoDB = async () => {
-  if (mongoConfig.auth?.user == "<username>" || !mongoUrl) {
+const connectToMongoDB = async ({ url, label = "primary", allowMock = false } = {}) => {
+  const parsed = mongoUtils.parse_url(url);
+  const missingCreds = parsed.auth?.user == "<username>" || !url;
+
+  if (missingCreds && allowMock) {
     logger.warn("Mongo Configuration Missing");
     const mongoServer = await MongoMemoryServer.create();
     const db = connect(mongoServer.getUri());
@@ -64,26 +72,29 @@ const connectToMongoDB = async () => {
     });
     MongoMemoryServerInstance = mongoServer;
     return db;
-    //return;
-  } else {
-    const db = connect(MONGODB_URL, mongoOptions);
-    db.on("open", () => {
-      logger.info(
-        `Mongoose connection open to ${JSON.stringify(
-          mongoConfig.servers[0].host,
-        )}`,
-      );
-    });
-    db.on("error", (err) => {
-      logger.error(
-        `Mongoose connection error: ${err} with connection info ${JSON.stringify(
-          mongoConfig.servers[0].host,
-        )}`,
-      );
-      process.exit(0);
-    });
-    return db;
   }
+
+  if (missingCreds) {
+    throw new Error(`Mongo ${label} configuration missing`);
+  }
+
+  const db = connect(url, mongoOptions);
+  db.on("open", () => {
+    logger.info(
+      `Mongoose ${label} connection open to ${JSON.stringify(
+        parsed.servers?.[0]?.host,
+      )}`,
+    );
+  });
+  db.on("error", (err) => {
+    logger.error(
+      `Mongoose ${label} connection error: ${err} with connection info ${JSON.stringify(
+        parsed.servers?.[0]?.host,
+      )}`,
+    );
+    process.exit(0);
+  });
+  return db;
 };
 
 function QueryBuilder() {
@@ -113,23 +124,48 @@ QueryBuilder.prototype.query = function (k) {
   return this.q;
 };
 
+function createDatabaseAccessor(getFactory, label) {
+  return function database(dbName) {
+    const factory = getFactory();
+    if (!factory) {
+      throw Error(label === "ro" ? "NODB_RO" : "NODB");
+    }
+    return factory.useDb(dbName, { useCache: true });
+  };
+}
+
 module.exports = (function () {
   let factory = null;
+  let factoryRo = null;
+
   (async () => {
-    factory = await connectToMongoDB();
+    factory = await connectToMongoDB({
+      url: MONGODB_URL,
+      label: "primary",
+      allowMock: true,
+    });
     logger.info("connectToMongoDB:Success");
+
+    if (mongoRoUrl && mongoRoUrl !== MONGODB_URL) {
+      factoryRo = await connectToMongoDB({
+        url: mongoRoUrl,
+        label: "readonly",
+        allowMock: false,
+      });
+      logger.info("connectToMongoDB(ro):Success");
+    } else {
+      factoryRo = factory;
+      logger.info("connectToMongoDB(ro):using primary connection");
+    }
   })();
+
   return {
     dbConfig: {
       dbName: mongoConfig.dbName,
     },
     QueryBuilder: QueryBuilder,
-    database(dbName) {
-      if (!factory) {
-        throw Error("NODB");
-      }
-      return factory.useDb(dbName, { useCache: true });
-    },
+    database: createDatabaseAccessor(() => factory, "primary"),
+    databaseRo: createDatabaseAccessor(() => factoryRo, "ro"),
     throwError(code, error) {
       console.error(code, error);
     },

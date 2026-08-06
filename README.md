@@ -12,8 +12,11 @@ npm i @bootloader/mongon --save
 in `.env` or `config/local.properties`
 ```.ini
 ####### MONGODB ##############
-## DB Credentials
+## DB Credentials (primary / read-write)
 mongodb.url = mongodb://<username>:<password>@<host>:27017/<db>?authSource=admin&authMechanism=SCRAM-SHA-1&maxPoolSize=20&retryWrites=false
+
+## Optional read-only / secondary URL. Falls back to mongodb.url when unset.
+mongodb-ro.url = mongodb://<username>:<password>@<ro-host>:27017/<db>?authSource=admin&authMechanism=SCRAM-SHA-1&maxPoolSize=20&readPreference=secondaryPreferred&retryWrites=false
 
 ## Prefix for DB eg:- tnt_ default is none, domain parameter will be used as it is for dbname
 mongodb.db.prefix=
@@ -56,11 +59,12 @@ const SampleScheme = require('../schema/sample_schema');
 
 module.exports = {
     async findAll(){
-        let SampleModel = mongon.model(SampleScheme); // Get Model
-        let doc = await SampleModel.find(); // Find Model with mongoose API's
+        // Read from readonly / secondary connection when mongodb-ro.url is set
+        let SampleModelRo = mongon.ro.model(SampleScheme);
+        let doc = await SampleModelRo.find();
         return doc;
     },
-    async save({type,message}){  // Save to Default DB
+    async save({type,message}){  // Write to primary DB
         let SampleModel = mongon.model(SampleScheme,{}); 
         let doc = await SampleModel.save({
             type,message
@@ -78,3 +82,15 @@ module.exports = {
     }
 }
 ```
+
+### Read-only connection
+```javascript
+import mongon from "@bootloader/mongon";
+
+let UserSchemaModel = mongon.model(UserSchema);       // primary (rw)
+let UserSchemaModelRo = mongon.ro.model(UserSchema);   // readonly (mongodb-ro.url)
+
+// same helpers on mongon.ro:
+// mongon.ro.getCollection / mongon.ro.getModel / mongon.ro.collection / mongon.ro.database
+```
+If `mongodb-ro.url` is missing (or equal to `mongodb.url`), `mongon.ro` reuses the primary connection.
